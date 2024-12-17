@@ -368,18 +368,32 @@ def download_playlist_tracks(playlist_link, outpath, create_folder, trackname_co
     remove_empty_files(outpath)
 
 def get_token(reset=False):
-    """Get token from cache or user input with validation."""
+    """Get token from cache, auto-fetch, or user input."""
     cache_file = ".cache"
+    
+    # Try cache first if not resetting
     if not reset and os.path.exists(cache_file):
         try:
             with open(cache_file) as f:
                 data = json.load(f)
-                # Add basic token validation
                 if data.get("token") and isinstance(data["token"], str) and len(data["token"]) > 0:
                     return data["token"]
         except (json.JSONDecodeError, IOError):
             pass
     
+    # Try auto-fetching
+    print("Attempting to fetch token automatically...")
+    token = get_token_auto()
+    if token:
+        try:
+            with open(cache_file, "w") as f:
+                json.dump({"token": token}, f)
+            return token
+        except IOError as e:
+            logging.warning(f"Could not save token to cache: {e}")
+    
+    # Fall back to manual input
+    print("Automatic token fetch failed. Please enter manually:")
     token = input("Enter Token: ").strip()
     if not token:
         raise ValueError("Token cannot be empty")
